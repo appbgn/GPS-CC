@@ -1,14 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Bot, X, Minus, Send, Sparkles, MessageSquare } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Bot, X, Minus, Send, Sparkles, Loader2 } from 'lucide-react';
 
 export function AIAssistantWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Array<{ sender: 'user' | 'bot'; text: string }>>([
-    { sender: 'bot', text: 'Halo, Admin PUPR 👋 Ada yang bisa saya bantu hari ini?' },
+    { sender: 'bot', text: 'Halo, Admin PUPR 👋 Saya Gemini AI Assistant. Ada yang bisa saya bantu terkait permohonan & pengaduan PUPR Garut hari ini?' },
   ]);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom();
+    }
+  }, [messages, isOpen]);
 
   const quickPrompts = [
     'Ringkasan Permohonan Hari Ini',
@@ -18,19 +31,43 @@ export function AIAssistantWidget() {
     'Buat Laporan Mingguan',
   ];
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const query = textToSend || input;
-    if (!query.trim()) return;
+    if (!query.trim() || loading) return;
 
-    setMessages((prev) => [
-      ...prev,
-      { sender: 'user', text: query },
-      {
-        sender: 'bot',
-        text: `Menganalisis data "${query}"... Saat ini sistem mencatat permohonan berjalan stabil dengan kepatuhan SLA 97.2%.`,
-      },
-    ]);
+    const userMessage = { sender: 'user' as const, text: query };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     if (!textToSend) setInput('');
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/gemini/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: query,
+          history: newMessages.slice(-6), // Send last few messages for context
+        }),
+      });
+
+      const data = await response.json();
+      if (data.text) {
+        setMessages((prev) => [...prev, { sender: 'bot', text: data.text }]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { sender: 'bot', text: 'Maaf, terjadi masalah saat memproses permintaan dengan Gemini AI.' },
+        ]);
+      }
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        { sender: 'bot', text: 'Gagal terhubung ke layanan Gemini AI. Silakan periksa koneksi Anda.' },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) {
@@ -102,14 +139,24 @@ export function AIAssistantWidget() {
           </div>
         ))}
 
+        {loading && (
+          <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-xl w-fit">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>Gemini AI sedang berpikir...</span>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+
         {/* Quick Suggestion Pills */}
         <div className="flex flex-col gap-1.5 mt-2 pt-2 border-t border-white/5">
           <span className="text-[10px] text-slate-400 font-medium">Saran Pertanyaan:</span>
           {quickPrompts.map((prompt, i) => (
             <button
               key={i}
+              disabled={loading}
               onClick={() => handleSend(prompt)}
-              className="text-left text-[11px] text-blue-200 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 hover:border-blue-500/40 transition-colors"
+              className="text-left text-[11px] text-blue-200 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 hover:border-blue-500/40 disabled:opacity-50 transition-colors"
             >
               {prompt}
             </button>
@@ -129,16 +176,17 @@ export function AIAssistantWidget() {
           <input
             type="text"
             value={input}
+            disabled={loading}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Tanyakan apa saja..."
-            className="w-full bg-white/5 border border-white/10 rounded-full pl-4 pr-10 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50"
+            placeholder={loading ? 'Memproses dengan Gemini...' : 'Tanyakan apa saja...'}
+            className="w-full bg-white/5 border border-white/10 rounded-full pl-4 pr-10 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 disabled:opacity-50"
           />
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() || loading}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:hover:bg-blue-600 flex items-center justify-center transition-colors"
           >
-            <Send className="w-3.5 h-3.5 text-white" />
+            {loading ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Send className="w-3.5 h-3.5 text-white" />}
           </button>
         </form>
       </div>
