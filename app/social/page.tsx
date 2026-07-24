@@ -6,6 +6,7 @@ import { UnifiedInbox } from '@/components/social/UnifiedInbox';
 import { ConversationView } from '@/components/social/ConversationView';
 import { AIAssistant } from '@/components/social/AIAssistant';
 import { SocialAnalytics } from '@/components/social/SocialAnalytics';
+import { SocialListeningFeed } from '@/components/social/SocialListeningFeed';
 
 export default function SocialMediaCommandCenter() {
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
@@ -20,6 +21,15 @@ export default function SocialMediaCommandCenter() {
       <SocialKPI />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8">
+          <SocialListeningFeed />
+        </div>
+        <div className="lg:col-span-4">
+          <SocialAnalytics />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-4">
           <UnifiedInbox onSelectMessage={setSelectedMessage} />
         </div>
@@ -30,8 +40,6 @@ export default function SocialMediaCommandCenter() {
           <AIAssistant message={selectedMessage} />
         </div>
       </div>
-      
-      <SocialAnalytics />
     </div>
   );
 }
