@@ -1,5 +1,5 @@
-import React from 'react';
-import { Bot, Sparkles, BookOpen, AlertTriangle, ArrowRight, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bot, Sparkles, BookOpen, AlertTriangle, ArrowRight, CheckCircle2, RefreshCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface Message {
@@ -7,9 +7,57 @@ interface Message {
   sentiment: string;
   confidence: number;
   senderName: string;
+  preview: string;
+  platform: string;
 }
 
 export function AIAssistant({ message }: { message: Message | null }) {
+  const [draft, setDraft] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+
+  const generateDraft = async () => {
+    if (!message) return;
+    
+    setIsGenerating(true);
+    setDraft("");
+    
+    try {
+      const response = await fetch('/api/gemini/social-reply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: message.category,
+          senderName: message.senderName,
+          content: message.preview,
+          platform: message.platform,
+        }),
+      });
+      
+      const data = await response.json();
+      if (data.text) {
+        setDraft(data.text);
+      } else {
+        setDraft("Gagal menghasilkan draf dari Gemini.");
+      }
+    } catch (error) {
+      setDraft("Gagal terhubung ke Gemini AI.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (message) {
+      const init = async () => {
+        await generateDraft();
+      };
+      init();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [message]);
+
   if (!message) {
     return (
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl h-[600px] flex items-center justify-center p-4 text-center">
@@ -59,32 +107,35 @@ export function AIAssistant({ message }: { message: Message | null }) {
         {/* Suggested Reply */}
         <div className="space-y-2">
           <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <Bot className="w-3 h-3" /> AI Suggested Reply
+            <Bot className="w-3 h-3" /> AI Suggested Reply (Gemini)
           </h3>
           <div className="bg-purple-900/10 border border-purple-500/20 p-3 rounded-lg space-y-3 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-1.5 bg-purple-500/20 rounded-bl-lg">
               <Sparkles className="w-3 h-3 text-purple-400" />
             </div>
             <p className="text-sm text-slate-300">
-              Sesuai dengan SOP dan panduan, berikut adalah draf balasan yang disarankan:
+              Sesuai dengan SOP dan panduan, berikut adalah draf balasan yang disarankan oleh Gemini AI:
             </p>
             <div className="bg-slate-900/80 p-3 rounded border border-slate-700 text-sm text-slate-200 italic relative">
-              &quot;
-              {message.category === 'PBG' && `Halo ${message.senderName}, untuk mengurus Persetujuan Bangunan Gedung (PBG), Anda dapat mendaftar secara online melalui portal SIMBG (simbg.pu.go.id) atau mengunjungi loket pelayanan kami di Mall Pelayanan Publik (MPP) Kabupaten Garut.`}
-              {message.category === 'Jalan' && `Halo ${message.senderName}, terima kasih atas laporannya. Terkait kondisi infrastruktur jalan tersebut, segera kami teruskan ke Bidang Bina Marga Dinas PUPR Kabupaten Garut agar dapat dilakukan pengecekan dan penanganan lebih lanjut.`}
-              {message.category === 'SLF' && `Halo ${message.senderName}, terima kasih atas apresiasinya. Kami senantiasa berkomitmen untuk memberikan pelayanan publik yang optimal, termasuk dalam proses penerbitan Sertifikat Laik Fungsi (SLF).`}
-              {message.category === 'KRK' && `Halo ${message.senderName}, formulir dan persyaratan Keterangan Rencana Kabupaten (KRK) dapat diakses melalui portal resmi Bidang Tata Ruang PUPR Garut atau Bapak/Ibu dapat datang langsung ke kantor kami.`}
-              {message.category === 'Irigasi' && `Terima kasih ${message.senderName}! Kami berharap pembangunan infrastruktur irigasi ini dapat memberikan manfaat yang besar bagi peningkatan produktivitas pertanian di Kabupaten Garut.`}
-              {message.category === 'Drainase' && `Halo ${message.senderName}, terima kasih infonya. Kami memohon maaf atas gangguan lalu lintas yang terjadi selama proses perbaikan drainase. Pekerjaan ini kami upayakan selesai sesuai target waktu.`}
-              {!['PBG', 'Jalan', 'SLF', 'KRK', 'Irigasi', 'Drainase'].includes(message.category) && `Halo ${message.senderName}, terima kasih telah menghubungi Dinas PUPR Kabupaten Garut. Pesan Anda telah kami terima.`}
-              &quot;
+              {isGenerating ? (
+                <div className="flex items-center gap-2 text-slate-400">
+                  <RefreshCcw className="w-4 h-4 animate-spin text-purple-400" />
+                  Generating response with Gemini...
+                </div>
+              ) : (
+                <>&quot;{draft}&quot;</>
+              )}
             </div>
             <div className="flex gap-2">
+              <button 
+                onClick={generateDraft}
+                disabled={isGenerating}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-xs py-1.5 rounded transition-colors flex items-center justify-center gap-1"
+              >
+                <RefreshCcw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} /> Regenerate
+              </button>
               <button className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs py-1.5 rounded transition-colors flex items-center justify-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Gunakan Draft
-              </button>
-              <button className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs py-1.5 rounded transition-colors">
-                Edit Draft
               </button>
             </div>
           </div>
