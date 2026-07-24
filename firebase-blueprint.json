@@ -1,0 +1,25 @@
+{
+  "collections": [
+    {
+      "name": "settings",
+      "description": "Global application settings, such as WhatsApp connection state.",
+      "documents": [
+        {
+          "id": "whatsapp",
+          "fields": [
+            {
+              "name": "connected",
+              "type": "boolean",
+              "description": "Whether WhatsApp is currently connected"
+            },
+            {
+              "name": "updatedAt",
+              "type": "timestamp",
+              "description": "Last time the connection state was updated"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

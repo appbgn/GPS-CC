@@ -1,0 +1,6 @@
+{
+  "name": "GPS-CC Dashboard",
+  "description": "GARUT PUBLIC SERVICE AI COMMAND CENTER",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
